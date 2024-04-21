@@ -13,16 +13,16 @@
         $course = new Course();
         $course->parse_sql_arry($value);
         if ($course->offered_main_campus_fall) {
-            $fall_courses[] = $course;
+            $fall_courses[$course->course_code] = $course;
         }
         if ($course->offered_main_campus_spring) {
-            $spring_courses[] = $course;
+            $spring_courses[$course->course_code] = $course;
         }
         if ($course->offered_main_campus_even_year) {
-            $even_year_courses[] = $course;
+            $even_year_courses[$course->course_code] = $course;
         }
         if ($course->offered_main_campus_odd_year) {
-            $odd_year_courses[] = $course;
+            $odd_year_courses[$course->course_code] = $course;
         }
 
         $course->printCourse();
@@ -73,6 +73,30 @@
         }
     }
 
+    class CourseOption {
+        // Properties
+        public array $courses; // array of course objects
+        public array $recommended_courses; // array of course objects marked as recommended
+        public int $credits_value; // represents the number of credits that all the courses in the array are worth
+
+        public function __construct(int $credits_value) {
+            $this->credits_value = $credits_value;
+            $this->courses = array();
+        }
+
+        public function addOption(Course $course, int $recommended): bool {
+            if ($course->credits_count != $this->credits_value) {
+                return false;
+            } else {
+                $this->courses[] = $course;
+                if ($recommended = 1) {
+                    $this->recommended_courses[] = $course;
+                }
+                return true;
+            }
+        }
+    }
+
     enum Term: int {
         case FALL = 0;
         case SPRING = 1;
@@ -80,12 +104,19 @@
 
     class Semester {
         // Properties
-        public array $courses; // array of course objects
+        public array $courses; // array of Course objects or CourseOption objects
         public int $grade_level;
         public Term $term;
         public int $num_credits; // represents the sum of the credits_count for each course in the array
 
         // Methods
+        public function __construct(int $grade_level, Term $term) {
+            $this->courses = array();
+            $this->grade_level = $grade_level;
+            $this->term = $term;
+            $this->num_credits = 0;
+        }
+
         public function addCourse(Course $course): bool {
             if ($this->num_credits + $course->credits_count > 18) {
                 return false;
