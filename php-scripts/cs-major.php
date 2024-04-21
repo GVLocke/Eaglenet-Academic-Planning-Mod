@@ -31,16 +31,16 @@
 
     class Course {
         // Properties
-        public $course_code;
-        public $course_title;
-        public $credits_count;
-        public $description;
-        public $location;
-        public $honors;
-        public $offered_main_campus_fall;
-        public $offered_main_campus_spring;
-        public $offered_main_campus_even_year;
-        public $offered_main_campus_odd_year;
+        public string $course_code;
+        public string $course_title;
+        public int $credits_count;
+        public string $description;
+        public string $location;
+        public int $honors;
+        public int $offered_main_campus_fall;
+        public int $offered_main_campus_spring;
+        public int $offered_main_campus_even_year;
+        public int $offered_main_campus_odd_year;
 
         // Methods
         public function parse_sql_arry($sql_array) {
@@ -73,7 +73,31 @@
         }
     }
 
-function fetchCourses($sql, $connect) {
+    enum Term: int {
+        case FALL = 0;
+        case SPRING = 1;
+    }
+
+    class Semester {
+        // Properties
+        public array $courses; // array of course objects
+        public int $grade_level;
+        public Term $term;
+        public int $num_credits; // represents the sum of the credits_count for each course in the array
+
+        // Methods
+        public function addCourse(Course $course): bool {
+            if ($this->num_credits + $course->credits_count > 18) {
+                return false;
+            } else {
+                $this->courses[] = $course;
+                $this->num_credtis += $course->credits_count;
+                return true;
+            }
+        }
+    }
+
+    function fetchCourses($sql, $connect) {
         $courses = array();
         $result = $connect->query($sql);
         while ($row = $result->fetch_array()) {
