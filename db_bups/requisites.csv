@@ -1,4 +1,4 @@
-course_code,prerequisite,corequisite,grade_level_req,major_prioritized,major_required,department_prioritized,instructor_consent,honors,prerequisite_corequisite_interchangeable,Further Notes
+course_code,prerequisite,corequisite,grade_level_req,major_prioritized,major_required,department_prioritized,instructor_consent,honors,prerequisite_corequisite_interchangeable,further_notes
 ARO-3013,ARO-2021,ARO-3013L,,0,0,0,0,0,0,
 ARO-3021,ARO-3013,ARO-3023L,,0,0,0,0,0,0,
 ART-2233,,,,0,0,1,1,0,0,
