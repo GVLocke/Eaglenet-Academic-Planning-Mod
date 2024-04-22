@@ -135,4 +135,25 @@
         $course = new Course($course[$course_code]);
         return $course;
     }
+
+    function fetchRequisites($course_code, $connect) {
+        $sql = "select * from requisites where course_code = '" . $course_code . "'";
+        $result = $connect->query($sql);
+        $requisites = array();
+        while ($row = $result->fetch_array()) {
+            $requisites[] = array(
+                "course_code" => $row["course_code"],
+                "prerequisite" => $row["prerequisite"],
+                "corequisite" => $row["corequisite"],
+                "grade_level_req" => $row["grade_level_req"],
+                "major_prioritized" => $row['major_prioritized'],
+                "major_required" => $row['major_required'],
+                "department_prioritized" => $row['department_prioritized'],
+                "instructor_consent" => $row["instructor_consent"],
+                "honors" => $row["honors"],
+                "further_notes" => $row["further_notes"]
+            );
+        }
+        return $requisites;
+    }
 ?>
