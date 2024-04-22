@@ -25,8 +25,8 @@
             $odd_year_courses[$course->course_code] = $course;
         }
 
-        $course->printCourse();
-        echo "---------------------------------------------<br>";
+        // $course->printCourse();
+        // echo "---------------------------------------------<br>";
     }
 
     // create the statistics option:
@@ -63,10 +63,23 @@
         "EN-4123"        
     );
 
+    $plan = array();
     $freshman_fall = new Semester(1, Term::FALL);
-    // foreach ($object in $requirements) {
+    $plan[] = $freshman_fall;
 
-    // }
+    foreach ($requirements as $object) {
+        if (is_string($object)) {
+            $course = fetchSingleCourse($object, $connect);
+            $course->printCourse();
+            echo "--------------------------------------------------<br>";
+            $requisites = fetchRequisites($course->course_code, $connect);
+            echo "<pre>";
+            print_r($requisites);
+            echo "</pre>"; 
+        } else {
+            //todo
+        }
+    }
 
 
     // echo "<pre>";
