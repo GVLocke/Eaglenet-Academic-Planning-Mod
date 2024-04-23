@@ -1,4 +1,3 @@
-import pprint
 import re
 
 from selenium import webdriver
