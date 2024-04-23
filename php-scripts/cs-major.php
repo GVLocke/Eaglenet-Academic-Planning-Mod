@@ -35,7 +35,7 @@
     $applied_stat = fetchSingleCourse("MTH-2103", $connect);
     $stats_for_behavioral = fetchSingleCourse("PSY-2383", $connect);
 
-    $stats_option = new CourseOption(3);
+    $stats_option = new CourseOption();
     $stats_option->addOption($business_stats, 1);
     $stats_option->addOption($prob_and_stat, 0);
     $stats_option->addOption($applied_stat, 0);
@@ -63,9 +63,7 @@
         "EN-4123"        
     );
 
-    $plan = array();
-    $freshman_fall = new Semester(1, Term::FALL);
-    $plan[] = $freshman_fall;
+    $plan = new Plan();
 
     foreach ($requirements as $object) {
         if (is_string($object)) {
