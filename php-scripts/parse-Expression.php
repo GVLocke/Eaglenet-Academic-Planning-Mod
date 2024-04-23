@@ -41,9 +41,4 @@
             ];
         }
     }
-
-    $str = "(EE-2221 and EE-2222 and ME-2561 and ME-2562) or (EE-2211 and EE-2212 and CS-3363) or (CS-2243 and CS-3363)";
-    echo "<pre>";
-    print_r(parseExpression($str));
-    echo "</pre>";
 ?>
