@@ -1,20 +1,36 @@
 <?php
-    enum Term: int {
-        case FALL = 0;
-        case SPRING = 1;
-        case BOTH = 2;
+    enum Term: string {
+        case FALL = "F";
+        case SPRING = "S";
+        case BOTH = "B";
+    }
+    
+    enum GradeLevel: int {
+        case FRESHMAN = 1;
+        case SOPHOMORE = 2;
+        case JUNIOR = 3;
+        case SENIOR = 4;
     }
 
     interface Comparable {
         public function equals($object) : bool;
     }
+    
+    abstract class Course {
+       abstract public function requisitesMet(
+           array $completed_courses, 
+           GradeLevel $gradeLevel,
+           Semester $current_semester,
+           bool $honors_status
+       ) : bool;
+    }
 
-    class Course implements Comparable {
+    class SingleCourse extends Course implements Comparable {
         // Properties
         public string $course_code;
         public string $course_title;
         public int $credits_count;
-        public CourseRequisites $requisites;
+        public Requisites $requisites;
         public string $description;
         public string $location;
         public int $honors;
@@ -29,7 +45,7 @@
             $this->course_title = $sql_array["course_title"];
             $this->credits_count = $sql_array["credits_count"];
 
-            $this->requisites = new CourseRequisites(fetchRequisites($this->course_code, $connect));
+            $this->requisites = fetchRequisites($this->course_code, $connect);
 
             $this->description = $sql_array["description"];
             $this->location = $sql_array["location"];
@@ -45,7 +61,8 @@
             $this->offered_main_campus_odd_year = $sql_array["offered_main_campus_odd_year"];
         }
 
-        public function printCourse() {
+        public function printCourse(): void
+        {
             echo "Course Code: " . $this->course_code . "<br>";
             echo "Course Title: " . $this->course_title . "<br>";
             echo "Credits Count: " . $this->credits_count . "<br>";
@@ -66,57 +83,52 @@
         }
 
         public function equals($object) : bool {
-            if (!($object instanceof Course)) {
+            if (!($object instanceof SingleCourse)) {
                 return false;
             }
             return $this->course_code == $object->course_code;
         }
-
-        public function requirementsMet(Plan $plan, Term $term, int $year) : bool {
-            
-        }
-    }
-
-    class CourseRequisites {
-        public $course_code;
-        public $prerequisite;
-        public $corequisite;
-        public $grade_level_req;
-        public $major_prioritized;
-        public $major_required;
-        public $department_prioritized;
-        public $instructor_consent;
-        public $honors;
-        public $further_notes;
-
-        public function __construct($sql_array) {
-            $this->course_code = $sql_array['course_code'];
-            $this->prerequisite = $sql_array['prerequisite'];
-            $this->corequisite = $sql_array['corequisite'];
-            $this->grade_level_req = $sql_array['grade_level_req'];
-            $this->major_prioritized = $sql_array['major_prioritized'];
-            $this->major_required = $sql_array['major_required'];
-            $this->department_prioritized = $sql_array['department_prioritized'];
-            $this->instructor_consent = $sql_array['instructor_consent'];
-            $this->honors = $sql_array['honors'];
-            $this->further_notes = $sql_array['further_notes'];
-        }
-    }
-
-
-    class CourseOption {
-        // represents a list of courses, any of which could count for meeting degree requirements
-        public array $courses = array();
-        public array $recommended = array(); // all the courses that meet this requirement that are recommended by the registrar.
         
-        public function addOption(Course $course, int $recommended) {
+        public function requisitesMet(
+            array $completed_courses, 
+            GradeLevel $gradeLevel, 
+            Semester $current_semester,
+            bool $honors_status) : bool
+        {
+            return $this->requisites->allRequisitesMet(
+                $completed_courses, 
+                $current_semester, 
+                $gradeLevel, 
+                $honors_status
+            );
+        }
+    }
+
+    class CourseOption extends Course {
+        // represents a list of courses, any of which could count for meeting degree requirements
+        public array $courses = array(); // array of SingleCourse
+        public array $recommended = array(); // all the courses that meet this requirement that are recommended by the registrar.
+    
+        public function addOption(SingleCourse $course, int $recommended): void
+        {
             if ($recommended == 1) {
                 $this->recommended[] = $course;
             }
             $this->courses[] = $course;
         }
-
-        public function meetsRequirement(Course $course) {
+        
+        public function filterByCredits(int $credits) : array {
+            $courses = array();
+            foreach ($this->courses as $course) {
+                if ($course->credits_count <= $credits) {
+                    $courses[] = $course;
+                }
+            }
+            return $courses;
+        } 
+    
+        public function courseIsOption(SingleCourse $course): bool
+        {
             foreach ($this->courses as $option) {
                 if ($option->equals($course)) {
                     return true;
@@ -124,31 +136,191 @@
             }
             return false;
         }
+
+        public function requisitesMet(
+            // This implementation returns true if any of the optional courses have all their requisites met
+            array $completed_courses, 
+            GradeLevel $gradeLevel, 
+            Semester $current_semester, 
+            bool $honors_status): bool {
+            foreach ($this->courses as $course) {
+                if ($course->requisitesMet($completed_courses, $gradeLevel, $current_semester, $honors_status)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        public function getCoursesWithRequisitesMet(
+            $completed_courses, 
+            $gradeLevel, 
+            $current_semester, 
+            $honors_status) : array {
+            if (!$this->requisitesMet($completed_courses, $gradeLevel, $current_semester, $honors_status)) {
+                throw new InvalidArgumentException("None of the optional courses have their requisites met.");
+            }
+            $available_courses = array();
+            foreach ($this->courses as $course) {
+                if ($course->requisitesMet($completed_courses, $gradeLevel, $current_semester, $honors_status)) {
+                    $available_courses[] = $course;
+                }
+            }
+            return $available_courses;
+        }
+    }
+    
+    abstract class Requisites
+    {
+        abstract function allRequisitesMet(
+            array $completed_courses, 
+            Semester $current_semester, 
+            GradeLevel $gradeLevel, 
+            bool $honors_status
+        ) : bool;
+        
+        static function requisitesConstructor($sql_array) : Requisites {
+            return empty($sql_array) ? new CourseRequisitesNone : new CourseRequisites($sql_array);
+        }
+    }
+    
+    class CourseRequisitesNone extends Requisites {
+        public function allRequisitesMet(
+            array $completed_courses, 
+            Semester $current_semester, 
+            GradeLevel $gradeLevel, 
+            bool $honors_status): bool
+        {
+            return true;
+        }
+    }
+    
+    class CourseRequisites extends Requisites {
+        public string $course_code;
+        public string $prerequisite;
+        public string $corequisite;
+        public GradeLevel $grade_level_req;
+        public bool $prerequisite_corequisite_interchangeable;
+        public bool $major_prioritized;
+        public bool $major_required;
+        public bool $department_prioritized;
+        public bool $instructor_consent;
+        public bool $honors;
+        public string $further_notes;
+
+        public function __construct($sql_array) {
+            $this->course_code = $sql_array['course_code'];
+            $this->prerequisite = $sql_array['prerequisite'] == null ? "" : $sql_array['prerequisite'];
+            $this->corequisite = $sql_array['corequisite'] == null ? "" : $sql_array['corequisite'];
+            $this->grade_level_req = 
+                $sql_array['grade_level_req'] == null ? GradeLevel::FRESHMAN : $sql_array['grade_level_req'];
+            $this->prerequisite_corequisite_interchangeable = 
+                (bool) $sql_array['prerequisite_corequisite_interchangeable'];
+            $this->major_prioritized = (bool) $sql_array['major_prioritized'];
+            $this->major_required = (bool) $sql_array['major_required'];
+            $this->department_prioritized = (bool) $sql_array['department_prioritized'];
+            $this->instructor_consent = (bool) $sql_array['instructor_consent'];
+            $this->honors = (bool) $sql_array['honors'];
+            $this->further_notes = $sql_array['further_notes'] == null ? "" : $sql_array['further_notes'];
+        }
+        
+        public function allRequisitesMet(
+            array $completed_courses, 
+            Semester $current_semester, 
+            GradeLevel $gradeLevel, 
+            bool $honors_status) : bool {
+             return ($this->prerequisiteMet($completed_courses) 
+                     && $this->corequisiteMet($current_semester) 
+                     && $this->gradeLevelRequirementMet($gradeLevel) 
+                     && $this->honorsRequirementMet($honors_status)) 
+                || (($this->prerequisiteMet($completed_courses) || $this->corequisiteMet($current_semester)) 
+                     && $this->prerequisite_corequisite_interchangeable);
+        }
+
+        function prerequisiteMet(array $completed_courses): bool
+        {
+            $prerequisite_string = $this->prerequisite;
+            foreach ($completed_courses as $course) {
+                if (str_contains($prerequisite_string, $course)) {
+                    $prerequisite_string = str_replace($course, "true", $prerequisite_string);
+                }
+            }
+            // Replace substrings that match the pattern with "true"
+            $prerequisite_string = preg_replace(
+                '/\b[A-Za-z]+-\d{4}\b/', 'false', $prerequisite_string
+            );
+            return eval("return $prerequisite_string;");
+        }
+
+        function corequisiteMet(Semester $current_semester): bool
+        {
+            $corequisite_string = $this->corequisite;
+            foreach ($current_semester->courses as $course) {
+                if (str_contains($corequisite_string, $course)) {
+                    $corequisite_string = str_replace($course, "true", $corequisite_string);
+                }
+            }
+            
+            $corequisite_string = preg_replace(
+                '/\b[A-Za-z]+\d{4}\b/', 'false', $corequisite_string
+            );
+            return eval("return $corequisite_string;");
+        }
+
+        function gradeLevelRequirementMet(GradeLevel $gradeLevel): bool
+        {
+            return $this->grade_level_req <= $gradeLevel;
+        }
+
+        function honorsRequirementMet(bool $honors_status): bool
+        {
+            return !$this->honors || $honors_status;
+        }
+    }
+
+    
+    class Year
+    {
+        public Semester $fall;
+        public Semester $spring;
+        public GradeLevel $gradeLevel;
+        
+        public function __construct(GradeLevel $gradeLevel) {
+            $this->fall = new Semester(Term::FALL);
+            $this->spring = new Semester(Term::SPRING);
+            $this->gradeLevel = $gradeLevel;
+        }
+        
+        public function getAllCourses() : array {
+            $semesters = [$this->fall, $this->spring];
+            $courses = array();
+            foreach ($semesters as $semester) {
+                foreach ($semester->courses as $course) {
+                    $courses[] = $course;
+                }
+            }
+            return $courses;
+        }
     }
 
     class Semester {
         // Properties
         public array $courses; // array of Course objects or CourseOption objects
-        public int $grade_level;
         public Term $term;
         public int $num_credits; // represents the sum of the credits_count for each course in the array
-        public int $year; // the calendar year of the semester
 
         // Methods
-        public function __construct(int $grade_level, Term $term, int $year) {
+        public function __construct(Term $term) {
             $this->courses = array();
-            $this->grade_level = $grade_level;
             $this->term = $term;
             $this->num_credits = 0;
-            $this->year = $year;
         }
 
-        public function addCourse(Course $course): bool {
+        public function addCourse(SingleCourse $course): bool {
             if ($this->num_credits + $course->credits_count > 18) {
                 return false;
             } else {
                 $this->courses[] = $course;
-                $this->num_credtis += $course->credits_count;
+                $this->num_credits += $course->credits_count;
                 return true;
             }
         }
@@ -156,31 +328,43 @@
 
     class Plan {
         // Properties
-        public array $semesters; // array of Semester objects
+        public array $years; // array of year objects
         public array $all_courses; // array of all courses in every semester
-        public int $starting_year; // calendar year of the freshman fall semester
+        public mixed $connect;
 
         // Methods
-        public function __construct(int $starting_year) {
-            $this->starting_year = $starting_year;
-            $this->semesters = array();
-            for ($i = 1; $i <= 4; $i++) {
-                $this->semesters[] = new Semester($i, Term::FALL, ($this->starting_year + ($i - 1)));
-                $this->semesters[] = new Semester($i, Term::SPRING, ($this->starting_year + $i));
+        public function __construct($connect) {
+            $this->connect = $connect;
+            $this->years = array();
+            for ($i = GradeLevel::FRESHMAN; $i <= GradeLevel::SENIOR; $i++) {
+                $this->years[(int)$i] = new Year($i);
             }
         }
-
-        public function addCourse(Course $course, int $grade_level, Term $term): bool {
-            foreach ($this->semesters as $semester) {
-                if ($semester->grade_level == $grade_level && $semester->term == $term) {
-                    return $semester->addCourse($course);
+        
+        public function getCompletedCoursesBeforeSemester(GradeLevel $gradeLevel, Term $term) : array {
+            $completed_courses = array();
+            for ($i = GradeLevel::FRESHMAN; $i < $gradeLevel; $i++) {
+                foreach ($this->years[(int)$i]->getAllCourses() as $course) {
+                    $completed_courses[] = $course;
                 }
             }
-            return false;
+            switch ($term) {
+                case Term::FALL:
+                    break;
+                case Term::SPRING:
+                    foreach ($this->years[(int)$gradeLevel]->fall->courses as $course) {
+                        $completed_courses[] = $course;
+                    }
+                    break;
+                case Term::BOTH:
+                    throw new InvalidArgumentException('Term must be Fall or Spring, not both.');
+            }
+            return $completed_courses;
         }
     }
 
-    function fetchCourses($sql, $connect) {
+    function fetchCourses($sql, $connect): array
+    {
         $courses = array();
         $result = $connect->query($sql);
         while ($row = $result->fetch_array()) {
@@ -201,14 +385,15 @@
         return $courses;
     }
 
-    function fetchSingleCourse($course_code, $connect) {
+    function fetchSingleCourse($course_code, $connect) : SingleCourse {
         $sql = "select * from majors_minors_classes where course_code = '" . $course_code . "'"; 
         $course = fetchCourses($sql, $connect);
-        $course = new Course($course[$course_code], $connect);
+        $course = new SingleCourse($course[$course_code], $connect);
         return $course;
     }
 
-    function fetchRequisites($course_code, $connect) {
+    function fetchRequisites($course_code, $connect): Requisites
+    {
         $sql = "select * from requisites where course_code = '" . $course_code . "'";
         $result = $connect->query($sql);
         $requisites = array();
@@ -218,6 +403,7 @@
             "prerequisite" => $row["prerequisite"],
             "corequisite" => $row["corequisite"],
             "grade_level_req" => $row["grade_level_req"],
+            "prerequisite_corequisite_interchangeable" => $row["prerequisite_corequisite_interchangeable"],
             "major_prioritized" => $row['major_prioritized'],
             "major_required" => $row['major_required'],
             "department_prioritized" => $row['department_prioritized'],
@@ -226,6 +412,5 @@
             "further_notes" => $row["further_notes"]
             );
         }
-        return $requisites;
+        return Requisites::requisitesConstructor($requisites);
     }
-?>

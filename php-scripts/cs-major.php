@@ -1,4 +1,5 @@
 <?php
+global $connect;
     include "course-classes.php";
     include "connect-to-db.php";
     $start_year = 2022; // change this to a session var or HTTP post or whatever
@@ -11,7 +12,7 @@
     $cs_courses = fetchCourses($sql, $connect);
 
     foreach ($cs_courses as $key => $value) {
-        $course = new Course($value);
+        $course = new SingleCourse($value, $connect);
         if ($course->offered_main_campus_term == Term::FALL || $course->offered_main_campus_term == Term::BOTH) {
             $fall_courses[$course->course_code] = $course;
         }
@@ -24,9 +25,6 @@
         if ($course->offered_main_campus_odd_year) {
             $odd_year_courses[$course->course_code] = $course;
         }
-
-        // $course->printCourse();
-        // echo "---------------------------------------------<br>";
     }
 
     // create the statistics option:
@@ -62,9 +60,6 @@
         "EN-4113",
         "EN-4123"        
     );
-
-    $plan = new Plan();
-
     foreach ($requirements as $object) {
         if (is_string($object)) {
             $course = fetchSingleCourse($object, $connect);
@@ -74,8 +69,6 @@
             echo "<pre>";
             print_r($requisites);
             echo "</pre>"; 
-        } else {
-            //todo
         }
     }
 
@@ -83,5 +76,3 @@
     // echo "<pre>";
     // print_r($stats_option);
     // echo "</pre>";
-
-?>

@@ -1,4 +1,5 @@
 <?php
+    global $connect;
     include "connect-to-db.php";
     $sql = ("select * from majors_minors_classes where course_code like 'CS-%'");
     $result = $connect->query($sql);
@@ -23,4 +24,3 @@
 
 
     // echo json_encode($records);
-?>
