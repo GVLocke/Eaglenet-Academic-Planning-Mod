@@ -63,12 +63,27 @@ global $connect;
     foreach ($requirements as $object) {
         if (is_string($object)) {
             $course = fetchSingleCourse($object, $connect);
-            $course->printCourse();
-            echo "--------------------------------------------------<br>";
             $requisites = fetchRequisites($course->course_code, $connect);
-            echo "<pre>";
-            print_r($requisites);
-            echo "</pre>"; 
+            if (!$requisites->has_prerequisites) {
+                $course->printCourse();
+                echo "<pre>";
+                print_r($requisites);
+                echo "</pre>";
+                echo "--------------------------------------------------<br>";
+            }
+        }
+        if ($object instanceof CourseOption) {
+            echo "<h2> Option </h2>";
+            foreach ($object->courses as $course) {
+                if (!$course->requisites->has_prerequisites) {
+                    $course->printCourse();
+                    echo "<pre>";
+                    print_r($course->requisites);
+                    echo "</pre>";
+                    echo "--------------------------------------------------<br>";
+                }
+            }
+            echo "<h2> End Option </h2>";
         }
     }
 
