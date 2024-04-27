@@ -4,11 +4,6 @@ global $connect;
     include "bootstrap.php";
     include "fetch-functions.php";
     include "connect-to-db.php";
-    $start_year = 2022; // change this to a session var or HTTP post or whatever
-    $odd_year_courses = array();
-    $even_year_courses = array();
-    $spring_courses = array();
-    $fall_courses = array();
     
     $sql = "select * from majors_minors_classes where course_code like 'CS-%'";
     $cs_courses = fetchCourses($sql, $connect);
@@ -82,8 +77,3 @@ global $connect;
             echo "<h2> End Option </h2>";
         }
     }
-
-
-    // echo "<pre>";
-    // print_r($stats_option);
-    // echo "</pre>";
