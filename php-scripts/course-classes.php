@@ -171,6 +171,7 @@
     
     abstract class Requisites
     {
+        public bool $has_prerequisites;
         abstract function allRequisitesMet(
             array $completed_courses, 
             Semester $current_semester, 
@@ -184,6 +185,9 @@
     }
     
     class CourseRequisitesNone extends Requisites {
+        public function __construct() {
+            $this->has_prerequisites = false;
+        }
         public function allRequisitesMet(
             array $completed_courses, 
             Semester $current_semester, 
@@ -197,6 +201,7 @@
     class CourseRequisites extends Requisites {
         public string $course_code;
         public string $prerequisite;
+        public bool $has_prerequisites;
         public string $corequisite;
         public GradeLevel $grade_level_req;
         public bool $prerequisite_corequisite_interchangeable;
@@ -209,7 +214,14 @@
 
         public function __construct($sql_array) {
             $this->course_code = $sql_array['course_code'];
-            $this->prerequisite = $sql_array['prerequisite'] == null ? "" : $sql_array['prerequisite'];
+//            $this->prerequisite = $sql_array['prerequisite'] == null ? "" : $sql_array['prerequisite'];
+            if ($sql_array['prerequisite'] == null) {
+                $this->prerequisite = "";
+                $this->has_prerequisites = false;
+            } else {
+                $this->prerequisite = $sql_array['prerequisite'];
+                $this->has_prerequisites = true;
+            }
             $this->corequisite = $sql_array['corequisite'] == null ? "" : $sql_array['corequisite'];
             $this->grade_level_req = 
                 $sql_array['grade_level_req'] == null ? GradeLevel::FRESHMAN : $sql_array['grade_level_req'];
@@ -238,6 +250,9 @@
 
         function prerequisiteMet(array $completed_courses): bool
         {
+            if ($this->prerequisite == "") {
+                return true;
+            }
             $prerequisite_string = $this->prerequisite;
             foreach ($completed_courses as $course) {
                 if (str_contains($prerequisite_string, $course)) {
@@ -253,6 +268,9 @@
 
         function corequisiteMet(Semester $current_semester): bool
         {
+            if ($this->corequisite == "") {
+                return true;
+            }
             $corequisite_string = $this->corequisite;
             foreach ($current_semester->courses as $course) {
                 if (str_contains($corequisite_string, $course)) {
@@ -388,8 +406,7 @@
     function fetchSingleCourse($course_code, $connect) : SingleCourse {
         $sql = "select * from majors_minors_classes where course_code = '" . $course_code . "'"; 
         $course = fetchCourses($sql, $connect);
-        $course = new SingleCourse($course[$course_code], $connect);
-        return $course;
+        return new SingleCourse($course[$course_code], $connect);
     }
 
     function fetchRequisites($course_code, $connect): Requisites
