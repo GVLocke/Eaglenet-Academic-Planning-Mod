@@ -18,9 +18,3 @@
         "offered_main_campus_even_year"=>$row["offered_main_campus_even_year"],
         "offered_main_campus_odd_year"=>$row["offered_main_campus_odd_year"]);
     }
-    // echo '<pre>';
-    // print_r($cs_records);
-    // echo '</pre>';
-
-
-    // echo json_encode($records);

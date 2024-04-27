@@ -1,6 +1,8 @@
 <?php
+namespace AcademicPlanningMod;
 global $connect;
-    include "course-classes.php";
+    include "bootstrap.php";
+    include "fetch-functions.php";
     include "connect-to-db.php";
     $start_year = 2022; // change this to a session var or HTTP post or whatever
     $odd_year_courses = array();
@@ -66,9 +68,6 @@ global $connect;
             $requisites = fetchRequisites($course->course_code, $connect);
             if (!$requisites->has_prerequisites) {
                 $course->printCourse();
-                echo "<pre>";
-                print_r($requisites);
-                echo "</pre>";
                 echo "--------------------------------------------------<br>";
             }
         }
@@ -77,9 +76,6 @@ global $connect;
             foreach ($object->courses as $course) {
                 if (!$course->requisites->has_prerequisites) {
                     $course->printCourse();
-                    echo "<pre>";
-                    print_r($course->requisites);
-                    echo "</pre>";
                     echo "--------------------------------------------------<br>";
                 }
             }
