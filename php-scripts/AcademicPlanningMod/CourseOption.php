@@ -1,5 +1,4 @@
 <?php
-
 namespace AcademicPlanningMod;
 
 use InvalidArgumentException;
